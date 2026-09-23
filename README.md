@@ -32,5 +32,5 @@ Aplikasi berbasis web untuk mengenkripsi dan mendekripsi teks maupun berkas meng
 
 1. **Clone Repositori ini:**
    ```bash
-   git clone [https://github.com/](https://github.com/)[username-github]/TugasKripto-Enkripsi-Modern.git
+   https://github.com/Kurooikkii/TugasKripto-Enkripsi-Modern-Kelompok-7
    cd TugasKripto-Enkripsi-Modern
