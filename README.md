@@ -9,9 +9,9 @@ Aplikasi berbasis web untuk mengenkripsi dan mendekripsi teks maupun berkas meng
 ---
 
 ## 👥 Anggota Kelompok
-1. **[Nama Ketua Kelompok]** - NPM: `[NPM Ketua]`
-2. **[Nama Anggota 2]** - NPM: `[NPM Anggota 2]`
-3. **[Nama Anggota 3]** - NPM: `[NPM Anggota 3]`
+1. Chintia Aurizki Putri- 247006111175: `[NPM Ketua]`
+2. Adithyaa Nurrahman - 247006111176: `[NPM Anggota 2]`
+3. Muhamad Rifqi Nurjaman - 247006111177: `[NPM Anggota 3]`
 
 ---
 
