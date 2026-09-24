@@ -15,20 +15,29 @@ Aplikasi berbasis web untuk mengenkripsi dan mendekripsi teks maupun berkas meng
 
 ---
 
-## ✨ Fitur Utama
-* **Enkripsi Simetris Modern:** Mendukung AES-256-GCM dan ChaCha20-Poly1305 untuk teks & berkas.
-* **Keamanan Kunci:** Penurunan kunci berbasis kata sandi (PBKDF2/scrypt) dengan *salt* dan IV/*nonce* acak aman (*cryptographically secure*).
-* **Format Output:** Cipherteks dapat disalin/ditampilkan dalam format Base64 dan Heksadesimal.
-* **Integritas Data:** Otomatis menolak dekripsi jika kata sandi salah atau cipherteks/tag telah diubah (*tampered*).
-* **Analisis & Pengujian Kuantitatif:**
-  * Pengujian waktu enkripsi/dekripsi (berkas 1 KB, 1 MB, 10 MB).
-  * Perhitungan *Avalanche Effect*.
-  * Visualisasi Entropi & Histogram Byte.
-* **Fitur Pengayaan:** Visualisasi enkripsi citra (Perbandingan mode ECB vs mode aman GCM).
+## Fitur Utama
+
+- **Enkripsi Simetris Modern**: Mendukung AES-256-GCM dan ChaCha20-Poly1305 untuk teks & berkas
+- **Keamanan Kunci**: Penurunan kunci berbasis kata sandi menggunakan Argon2id dengan salt dan IV/nonce acak aman (cryptographically secure)
+- **Format Output**: Ciphertext dapat disalin/ditampilkan dalam format Base64 dan Heksadesimal
+- **Integritas Data**: Otomatis menolak dekripsi jika kata sandi salah atau ciphertext/tag telah diubah (tampered)
+- **Analisis & Pengujian Kuantitatif**:
+  - Pengujian waktu enkripsi/dekripsi (berkas 1 KB, 1 MB, 10 MB)
+  - Perhitungan Avalanche Effect
+  - Visualisasi Entropi & Histogram Byte
+  - Perbandingan performa AES-256-GCM vs ChaCha20-Poly1305
+- **Fitur Pengayaan — Hybrid Encryption (RSA-OAEP)**: Kunci sesi AES-256-GCM dibangkitkan acak untuk setiap enkripsi, kemudian dibungkus menggunakan RSA-OAEP (kunci publik RSA 2048-bit). Private key disimpan dalam bentuk terenkripsi (dilindungi kata sandi)
 
 ---
 
+## Teknologi
+- Python 3
+- Streamlit (antarmuka web)
+- Library `cryptography` (AES-GCM, ChaCha20-Poly1305, RSA-OAEP)
+- Library `argon2-cffi` (key derivation)
 ## 🛠️ Cara Instalasi
+
+---
 
 1. **Clone Repositori ini:**
    ```bash
