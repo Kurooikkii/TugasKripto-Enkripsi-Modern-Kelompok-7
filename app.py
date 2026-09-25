@@ -107,12 +107,16 @@ with tab_rsa:
 
     with sub_generate:
         st.write("Bikin pasangan kunci RSA baru (2048-bit). Lakukan ini SEKALI, simpan kedua filenya.")
+        rsa_key_password = st.text_input("Password Private Key", type="password", key="pw_rsa_generate")
 
         if st.button("Generate Pasangan Kunci RSA", type="primary", key="btn_gen_rsa"):
-            private_pem, public_pem = generate_rsa_keypair()
-            st.session_state["rsa_private_pem"] = private_pem
-            st.session_state["rsa_public_pem"] = public_pem
-            st.success("Berhasil dibuat!")
+            if not rsa_key_password:
+                st.error("Password private key wajib diisi.")
+            else:
+                private_pem, public_pem = generate_rsa_keypair(rsa_key_password)
+                st.session_state["rsa_private_pem"] = private_pem
+                st.session_state["rsa_public_pem"] = public_pem
+                st.success("Berhasil dibuat!")
 
         if "rsa_public_pem" in st.session_state:
             col1, col2 = st.columns(2)
@@ -152,21 +156,25 @@ with tab_rsa:
                     st.success("Berhasil dienkripsi!")
                     st.text_area("Ciphertext (Base64) - salin ini", value=b64_result, height=100, key="output_rsa_cipher")
 
-
     with sub_dekripsi:
         private_key_file = st.file_uploader("Upload Private Key (.pem)", type="pem", key="upload_privkey")
+        rsa_decrypt_password = st.text_input("Password Private Key", type="password", key="pw_rsa_decrypt")
         ciphertext_rsa = st.text_area("Tempel ciphertext (Base64) di sini", height=100, key="input_cipher_rsa")
 
         if st.button("Dekripsi (Hibrida)", type="primary", key="btn_dec_rsa"):
             if private_key_file is None:
                 st.error("Upload private key dulu.")
+            elif not rsa_decrypt_password:
+                st.error("Password private key wajib diisi.")
             elif not ciphertext_rsa:
                 st.error("Ciphertext tidak boleh kosong.")
             else:
                 import base64
                 try:
                     payload = base64.b64decode(ciphertext_rsa.strip())
-                    plaintext_bytes = hybrid_decrypt(payload, private_key_file.getvalue())
+                    plaintext_bytes = hybrid_decrypt(
+                        payload, private_key_file.getvalue(), rsa_decrypt_password
+                    )
                     hasil_rsa = plaintext_bytes.decode("utf-8")
                 except HybridDecryptionError as e:
                     st.error(str(e))

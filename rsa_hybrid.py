@@ -25,7 +25,7 @@ class HybridDecryptionError(Exception):
     pass
 
 
-def generate_rsa_keypair():
+def generate_rsa_keypair(password: str):
     """
     Bikin pasangan kunci RSA baru.
     Return: (private_pem: bytes, public_pem: bytes)
@@ -39,7 +39,7 @@ def generate_rsa_keypair():
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+        encryption_algorithm=serialization.BestAvailableEncryption(password.encode()),
     )
     public_pem = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
@@ -72,14 +72,14 @@ def hybrid_encrypt(plaintext: bytes, public_key_pem: bytes) -> bytes:
     return header + encrypted_session_key + nonce + ciphertext
 
 
-def hybrid_decrypt(payload: bytes, private_key_pem: bytes) -> bytes:
+def hybrid_decrypt(payload: bytes, private_key_pem: bytes, password: str) -> bytes:
     """
     Dekripsi payload hasil hybrid_encrypt().
     private_key_pem: isi file private key (.pem) dalam bytes.
     Raise HybridDecryptionError kalau private key salah / data rusak.
     """
     try:
-        private_key = serialization.load_pem_private_key(private_key_pem, password=None)
+        private_key = serialization.load_pem_private_key(private_key_pem, password=password.encode())
     except Exception:
         raise HybridDecryptionError("Private key tidak valid atau formatnya salah.")
 
@@ -116,7 +116,8 @@ def hybrid_decrypt(payload: bytes, private_key_pem: bytes) -> bytes:
 
 
 if __name__ == "__main__":
-    private_pem, public_pem = generate_rsa_keypair()
+    password = "password-rsa-kuat"
+    private_pem, public_pem = generate_rsa_keypair(password)
     print("Private key (rahasia, JANGAN disebar):")
     print(private_pem.decode())
     print("Public key (boleh disebar):")
@@ -126,11 +127,11 @@ if __name__ == "__main__":
     payload = hybrid_encrypt(pesan, public_pem)
     print(f"\nUkuran payload terenkripsi: {len(payload)} byte")
 
-    hasil = hybrid_decrypt(payload, private_pem)
+    hasil = hybrid_decrypt(payload, private_pem, password)
     print("Hasil dekripsi:", hasil.decode())
 
-    private_pem_lain, _ = generate_rsa_keypair()
+    private_pem_lain, _ = generate_rsa_keypair(password)
     try:
-        hybrid_decrypt(payload, private_pem_lain)
+        hybrid_decrypt(payload, private_pem_lain, password)
     except HybridDecryptionError as e:
         print("Sesuai harapan, ditolak:", e)
