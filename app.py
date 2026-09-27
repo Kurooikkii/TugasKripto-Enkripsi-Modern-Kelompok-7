@@ -6,7 +6,7 @@ import base64
 from crypto_core import decrypt, encrypt
 from rsa_hybrid import generate_rsa_keypair, hybrid_encrypt, hybrid_decrypt, HybridDecryptionError
 
-st.set_page_config(page_title="Enkripsi Data", page_icon="🔒", layout="centered")
+st.set_page_config(page_title="Enkripsi Data", layout="centered")
 
 st.markdown("""
 <style>
@@ -64,15 +64,23 @@ st.markdown("""
     div[data-testid="stTabs"] button[data-baseweb="tab"] {
         font-weight: 600;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-    }
     div[data-testid="stTabs"] button[aria-selected="true"] {
         border-bottom-color: #1e3a5f !important;
     }
     div[data-testid="stTabs"] button[aria-selected="true"] p {
         color: #1e3a5f !important;
     }
+
+    /* --- Efek visual tambahan: hover pada kotak form --- */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        transition: box-shadow 0.25s ease, transform 0.25s ease;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+        box-shadow: 0 6px 18px rgba(30, 58, 95, 0.10);
+        transform: translateY(-2px);
+    }
+
     @media (max-width: 500px) {
         div[data-testid="column"] {
             width: 100% !important;
@@ -160,23 +168,31 @@ with st.sidebar:
         else:
             st.caption("Belum ada aktivitas pada sesi ini.")
 
+
 def password_hint(password_value):
     if password_value and len(password_value) < 8:
         st.caption(":orange[Password sebaiknya minimal 8 karakter agar lebih aman.]")
 
-def clear_fields(*keys):
-    for k in keys:
-        st.session_state.pop(k, None)
-    st.rerun()
 
 def log_activity(message):
     st.session_state.setdefault("activity_log", [])
     st.session_state["activity_log"].insert(0, message)
     st.session_state["activity_log"] = st.session_state["activity_log"][:20]
 
+
+def section_version(section):
+    return st.session_state.get(f"v_{section}", 0)
+
+
+def bump_section(section):
+    st.session_state[f"v_{section}"] = section_version(section) + 1
+    st.rerun()
+
+
 tab_teks, tab_berkas, tab_rsa = st.tabs(["Teks", "Berkas", "RSA (Hibrida)"])
 
 with tab_teks:
+    v = section_version("teks")
     with st.container(border=True):
         operation_t = st.radio(
             "Operasi", ["Enkripsi", "Dekripsi"], horizontal=True, key="op_teks",
@@ -188,7 +204,7 @@ with tab_teks:
                  "ChaCha20-Poly1305 biasanya lebih cepat di perangkat tanpa akselerasi hardware AES."
         )
         password_t = st.text_input(
-            "Password", type="password", key="pw_teks",
+            "Password", type="password", key=f"pw_teks_{v}",
             placeholder="Contoh: rahasia123",
             help="Password ini dipakai untuk menurunkan kunci enkripsi. Simpan baik-baik, "
                  "karena tanpa password yang sama persis, data tidak bisa didekripsi kembali."
@@ -197,7 +213,7 @@ with tab_teks:
 
         if operation_t == "Enkripsi":
             plaintext = st.text_area(
-                "Teks yang mau dienkripsi", height=120, key="input_teks",
+                "Teks yang mau dienkripsi", height=120, key=f"input_teks_{v}",
                 placeholder="Tulis atau tempel teks rahasia di sini..."
             )
 
@@ -221,11 +237,11 @@ with tab_teks:
                     log_activity(f"Enkripsi teks berhasil ({algorithm_t})")
 
             if st.button("Bersihkan formulir", key="clear_enc_teks"):
-                clear_fields("pw_teks", "input_teks")
+                bump_section("teks")
 
         else:
             ciphertext_input = st.text_area(
-                "Tempel ciphertext (Base64) di sini", height=120, key="input_cipher_teks",
+                "Tempel ciphertext (Base64) di sini", height=120, key=f"input_cipher_teks_{v}",
                 placeholder="Tempel hasil enkripsi (format Base64) di sini..."
             )
 
@@ -249,9 +265,10 @@ with tab_teks:
                         log_activity("Dekripsi teks berhasil")
 
             if st.button("Bersihkan formulir", key="clear_dec_teks"):
-                clear_fields("pw_teks", "input_cipher_teks")
+                bump_section("teks")
 
 with tab_berkas:
+    v = section_version("file")
     with st.container(border=True):
         operation = st.radio(
             "Operasi", ["Enkripsi", "Dekripsi"], horizontal=True, key="op_file",
@@ -262,14 +279,14 @@ with tab_berkas:
             help="Pilih algoritma yang sama dengan yang dipakai saat enkripsi apabila sedang mendekripsi."
         )
         password = st.text_input(
-            "Password", type="password", key="pw_file",
+            "Password", type="password", key=f"pw_file_{v}",
             placeholder="Contoh: rahasia123",
             help="Password yang sama harus dipakai saat enkripsi dan dekripsi berkas ini."
         )
         password_hint(password)
 
         if operation == "Enkripsi":
-            data = st.file_uploader("Pilih file untuk dienkripsi")
+            data = st.file_uploader("Pilih file untuk dienkripsi", key=f"upload_enc_file_{v}")
             if data is not None and st.button("Enkripsi", type="primary", key="btn_enc_file"):
                 if not password:
                     st.error("Password wajib diisi.")
@@ -295,9 +312,9 @@ with tab_berkas:
                     log_activity(f"Enkripsi berkas '{data.name}' berhasil ({algorithm})")
 
             if st.button("Bersihkan formulir", key="clear_enc_file"):
-                clear_fields("pw_file")
+                bump_section("file")
         else:
-            data = st.file_uploader("Pilih file terenkripsi", type="enc")
+            data = st.file_uploader("Pilih file terenkripsi", type="enc", key=f"upload_dec_file_{v}")
             if data is not None and st.button("Dekripsi", type="primary", key="btn_dec_file"):
                 if not password:
                     st.error("Password wajib diisi.")
@@ -319,7 +336,7 @@ with tab_berkas:
                         log_activity(f"Dekripsi berkas '{data.name}' berhasil")
 
             if st.button("Bersihkan formulir", key="clear_dec_file"):
-                clear_fields("pw_file")
+                bump_section("file")
 
 with tab_rsa:
     st.caption(
@@ -332,18 +349,19 @@ with tab_rsa:
     )
 
     with sub_generate:
+        v = section_version("rsa_generate")
         with st.container(border=True):
             st.info("Mulai dari sini jika kamu belum punya pasangan kunci RSA.")
             st.write("Bikin pasangan kunci RSA baru (2048-bit). Lakukan ini SEKALI, simpan kedua filenya.")
             rsa_key_password = st.text_input(
-                "Password Private Key", type="password", key="pw_rsa_generate",
+                "Password Private Key", type="password", key=f"pw_rsa_generate_{v}",
                 placeholder="Contoh: rahasia123",
                 help="Password ini dipakai untuk mengenkripsi private key yang dihasilkan, "
                      "bukan untuk mengenkripsi data. Diperlukan lagi saat proses dekripsi."
             )
             password_hint(rsa_key_password)
             rsa_key_password_confirm = st.text_input(
-                "Konfirmasi Password Private Key", type="password", key="pw_rsa_generate_confirm",
+                "Konfirmasi Password Private Key", type="password", key=f"pw_rsa_generate_confirm_{v}",
                 placeholder="Ulangi password di atas",
                 help="Diketik ulang supaya tidak salah ketik — kalau typo, private key tidak bisa dibuka lagi nanti."
             )
@@ -389,14 +407,15 @@ with tab_rsa:
                     st.code(preview_lines, language=None)
 
             if st.button("Bersihkan formulir", key="clear_gen_rsa"):
-                clear_fields("pw_rsa_generate", "pw_rsa_generate_confirm")
+                bump_section("rsa_generate")
 
     with sub_enkripsi:
+        v = section_version("rsa_enc")
         with st.container(border=True):
             st.caption("Butuh Public Key penerima. Minta file public_key.pem dari orang yang akan menerima pesan.")
-            public_key_file = st.file_uploader("Upload Public Key (.pem)", type="pem", key="upload_pubkey")
+            public_key_file = st.file_uploader("Upload Public Key (.pem)", type="pem", key=f"upload_pubkey_{v}")
             plaintext_rsa = st.text_area(
-                "Teks yang mau dienkripsi", height=100, key="input_teks_rsa",
+                "Teks yang mau dienkripsi", height=100, key=f"input_teks_rsa_{v}",
                 placeholder="Tulis pesan rahasia untuk penerima di sini..."
             )
 
@@ -419,18 +438,19 @@ with tab_rsa:
                         log_activity("Enkripsi hibrida (RSA) berhasil")
 
             if st.button("Bersihkan formulir", key="clear_enc_rsa"):
-                clear_fields("input_teks_rsa")
+                bump_section("rsa_enc")
 
     with sub_dekripsi:
+        v = section_version("rsa_dec")
         with st.container(border=True):
             st.caption("Butuh Private Key milikmu sendiri beserta password yang dipakai saat generate kunci.")
-            private_key_file = st.file_uploader("Upload Private Key (.pem)", type="pem", key="upload_privkey")
+            private_key_file = st.file_uploader("Upload Private Key (.pem)", type="pem", key=f"upload_privkey_{v}")
             rsa_decrypt_password = st.text_input(
-                "Password Private Key", type="password", key="pw_rsa_decrypt",
+                "Password Private Key", type="password", key=f"pw_rsa_decrypt_{v}",
                 placeholder="Password yang dipakai saat generate kunci"
             )
             ciphertext_rsa = st.text_area(
-                "Tempel ciphertext (Base64) di sini", height=100, key="input_cipher_rsa",
+                "Tempel ciphertext (Base64) di sini", height=100, key=f"input_cipher_rsa_{v}",
                 placeholder="Tempel hasil enkripsi hibrida (format Base64) di sini..."
             )
 
@@ -460,7 +480,7 @@ with tab_rsa:
                         log_activity("Dekripsi hibrida (RSA) berhasil")
 
             if st.button("Bersihkan formulir", key="clear_dec_rsa"):
-                clear_fields("pw_rsa_decrypt", "input_cipher_rsa")
+                bump_section("rsa_dec")
 
 st.divider()
 
