@@ -6,6 +6,13 @@ import matplotlib.pyplot as plt
 
 # Import fungsi utama dari crypto_core kelompokmu
 from crypto_core import encrypt, decrypt
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
+# Pastikan 'os' juga sudah di-import
+
+def enkripsi_untuk_avalanche(plaintext: bytes, key: bytes, nonce: bytes, algorithm: str) -> bytes:
+    """Enkripsi dengan nonce/key TETAP (bukan acak), khusus untuk uji avalanche effect."""
+    cipher = AESGCM(key) if algorithm == "AES-256-GCM" else ChaCha20Poly1305(key)
+    return cipher.encrypt(nonce, plaintext, None)
 
 def hitung_entropi(data: bytes) -> float:
     """Menghitung nilai entropi Shannon dari data byte (0-8 bit/byte)."""
@@ -65,9 +72,6 @@ def jalankan_pengujian():
         print(f"Peringatan: Jumlah berkas baru {len(berkas_list)}. Disarankan minimal 10 berkas!")
 
     password_utama = "password-rahasia-123"
-    # Password dengan perubahan 1 karakter untuk uji Avalanche Effect
-    password_uji = "Password-rahasia-123" 
-
     hasil_pengujian = []
 
     print("\n=== MEMULAI PENGUJIAN KUANTITATIF KRIPTOGRAFI ===")
@@ -84,30 +88,51 @@ def jalankan_pengujian():
         ukuran_str = f"{ukuran_bytes / (1024*1024):.2f} MB" if ukuran_bytes >= 1024*1024 else f"{ukuran_bytes / 1024:.2f} KB"
         entropi_plain = hitung_entropi(plain_data)
 
+        # Lewati pengujian avalanche jika file kosong
+        if ukuran_bytes == 0:
+            continue
+
         for algo in ["AES-256-GCM", "ChaCha20-Poly1305"]:
-            # 1. Uji Waktu Enkripsi
+            # 1. Uji Waktu Enkripsi (Fungsi Inti)
             t_start = time.perf_counter()
             cipher_payload = encrypt(plain_data, password_utama, algorithm=algo)
             t_enc = (time.perf_counter() - t_start) * 1000  # ms
 
-            # 2. Uji Waktu Dekripsi
+            # 2. Uji Waktu Dekripsi (Fungsi Inti)
             t_start = time.perf_counter()
             restored_data = decrypt(cipher_payload, password_utama)
             t_dec = (time.perf_counter() - t_start) * 1000  # ms
 
-            # Status Validasi Dekripsi
             status_dekripsi = "BERHASIL" if restored_data == plain_data else "GAGAL"
 
             # 3. Hitung Entropi Cipherteks
             entropi_cipher = hitung_entropi(cipher_payload)
 
-            # 4. Uji Avalanche Effect (Ubah 1 Karakter Password)
-            cipher_payload_alt = encrypt(plain_data, password_uji, algorithm=algo)
-            avalanche_effect = hitung_avalanche_effect(cipher_payload, cipher_payload_alt)
-
-            # 5. Buat Grafik Histogram (Untuk sampel file pertama tiap algoritma)
+            # 4. Buat Grafik Histogram
             buat_histogram(plain_data, cipher_payload, f"{file_name}_{algo}")
 
+            # ==========================================
+            # 5. UJI AVALANCHE EFFECT (Metodologi Valid)
+            # ==========================================
+            fixed_key = os.urandom(32)
+            fixed_nonce = os.urandom(12)
+
+            # --- A. Avalanche Effect: Plaintext ---
+            plain_data_copy = bytearray(plain_data)
+            plain_data_copy[0] ^= 0b00000001
+            
+            cipher_asli_p = enkripsi_untuk_avalanche(plain_data, fixed_key, fixed_nonce, algo)
+            cipher_ubah_p = enkripsi_untuk_avalanche(bytes(plain_data_copy), fixed_key, fixed_nonce, algo)
+            avalanche_plaintext_pct = hitung_avalanche_effect(cipher_asli_p, cipher_ubah_p)
+
+            # --- B. Avalanche Effect: Kunci ---
+            fixed_key_copy = bytearray(fixed_key)
+            fixed_key_copy[0] ^= 0b00000001
+            
+            cipher_ubah_k = enkripsi_untuk_avalanche(plain_data, bytes(fixed_key_copy), fixed_nonce, algo)
+            avalanche_key_pct = hitung_avalanche_effect(cipher_asli_p, cipher_ubah_k)
+
+            # 6. Simpan ke dalam satu baris tabel
             hasil_pengujian.append({
                 "Nama Berkas": file_name,
                 "Ukuran Berkas": ukuran_str,
@@ -117,10 +142,11 @@ def jalankan_pengujian():
                 "Waktu Dekripsi (ms)": round(t_dec, 2),
                 "Entropi Plainteks": round(entropi_plain, 4),
                 "Entropi Cipherteks": round(entropi_cipher, 4),
-                "Avalanche Effect (%)": round(avalanche_effect, 2)
+                "Avalanche Plaintext (%)": round(avalanche_plaintext_pct, 2),
+                "Avalanche Kunci (%)": round(avalanche_key_pct, 2)
             })
 
-            print(f"[{algo}] {file_name} ({ukuran_str}) -> Enkripsi: {t_enc:.2f}ms | Avalanche: {avalanche_effect:.2f}% | Status: {status_dekripsi}")
+            print(f"[{algo}] {file_name} ({ukuran_str}) -> Enc: {t_enc:.2f}ms | Av.Plain: {avalanche_plaintext_pct:.2f}% | Av.Key: {avalanche_key_pct:.2f}%")
 
     # Export hasil ke Excel (.xlsx) untuk lampiran tugas
     df = pd.DataFrame(hasil_pengujian)
